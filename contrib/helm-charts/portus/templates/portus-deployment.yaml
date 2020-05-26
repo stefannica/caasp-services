@@ -1,4 +1,4 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "portus.fullname" . }}
@@ -28,6 +28,9 @@ spec:
           {{- if eq false .Values.portus.tls.enabled }}
           command: ["/bin/bash"]
           args: ["-c", "openssl genrsa -out /secrets/portus.key 3072;/init"]
+          {{- else if .Values.portus.tls.generate }}
+          command: ["/bin/bash"]
+          args: ["-c", "cp /certificates/portus.ca /usr/share/pki/trust/anchors; update-ca-certificates ;/init"]
           {{- end }}
           ports:
             - containerPort: {{ .Values.portus.service.port }}
@@ -49,9 +52,9 @@ spec:
             - name: PORTUS_DB_HOST
               value: {{ template "mariadb.fullname" . }}
             - name: PORTUS_DB_DATABASE
-              value: {{ .Values.mariadb.mariadbDatabase | quote }}
+              value: {{ .Values.mariadb.db.name | quote }}
             - name: PORTUS_DB_USERNAME
-              value: {{ .Values.mariadb.mariadbUser | quote }}
+              value: {{ .Values.mariadb.db.user | quote }}
             {{- if .Values.portus.config.ldap.authentication.enabled }}
             - name: PORTUS_LDAP_AUTHENTICATION_PASSWORD
               valueFrom:
@@ -120,6 +123,10 @@ spec:
         - name: "portus-background"
           image: "{{ .Values.portus.image.repository }}:{{ .Values.portus.image.tag }}"
           imagePullPolicy: {{ .Values.portus.image.pullPolicy }}
+          {{- if and .Values.portus.tls.enabled .Values.portus.tls.generate }}
+          command: ["/bin/bash"]
+          args: ["-c", "cp /certificates/portus.ca /usr/share/pki/trust/anchors; update-ca-certificates ;/init"]
+          {{- end }}
           env:
             - name: PORTUS_BACKGROUND
               value: "true"
@@ -129,9 +136,9 @@ spec:
             - name: PORTUS_DB_HOST
               value: {{ template "mariadb.fullname" . }}
             - name: PORTUS_DB_DATABASE
-              value: {{ .Values.mariadb.mariadbDatabase | quote }}
+              value: {{ .Values.mariadb.db.name | quote }}
             - name: PORTUS_DB_USERNAME
-              value: {{ .Values.mariadb.mariadbUser | quote }}
+              value: {{ .Values.mariadb.db.user | quote }}
             - name: PORTUS_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -172,6 +179,10 @@ spec:
           volumeMounts:
             - name: secrets
               mountPath: /secrets
+          {{- if and .Values.portus.tls.enabled .Values.portus.tls.generate }}
+            - name: certificates
+              mountPath: /certificates
+          {{- end }}
       volumes:
         {{- if .Values.portus.tls.enabled }}
         - name: secrets
@@ -186,6 +197,10 @@ spec:
             items:
               - key: cert
                 path: portus.crt
+          {{- if .Values.portus.tls.generate }}
+              - key: ca
+                path: portus.ca
+          {{- end }}
         {{- else }}
         - name: secrets
           emptyDir: {}

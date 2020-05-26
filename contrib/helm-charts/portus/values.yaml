@@ -187,11 +187,17 @@ portus:
   tls:
     enabled: false
 
-    ## must include key if using tls
+    ## If set, the chart will auto-generate self-signed certificates
+    generate: true
+
+    ## The common name is required when generating self-signed certificates
+    commonName: ""
+
+    ## must include key if using tls and not generating self-signed certs
     ##
     # key:
 
-    ## must include certificate if using tls
+    ## must include certificate if using tls and not generating self-signed certs
     ##
     # cert:
 
@@ -308,16 +314,38 @@ mariadb:
   ##
   enabled: true
 
-  ## persistence configuration.
+  ## Replication configuration
   ##
-  persistence:
-    enabled: false
-    # storageClass: "-"
-    accessMode: "ReadWriteOnce"
-    size: "8Gi"
+  replication:
+    ## Enable replication. This enables the creation of replicas of MariaDB. If false, only a
+    ## master deployment would be created
+    ##
+    enabled: true
+  
+  master:
+    ## persistence configuration.
+    ##
+    persistence:
+      enabled: false
+      # storageClass: "-"
+      accessModes: 
+      - ReadWriteOnce
+      size: "8Gi"
+
+  slave:
+    replicas: 1
+    ## persistence configuration.
+    ##
+    persistence:
+      enabled: false
+      # storageClass: "-"
+      accessModes: 
+      - ReadWriteOnce
+      size: "8Gi"
 
   ## Configuration values for Mariadb.
   ## must match Portus database values.
   ##
-  mariadbUser: "portus"
-  mariadbDatabase: "portus"
+  db:
+    user: "portus"
+    database: "portus"

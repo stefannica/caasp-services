@@ -1,4 +1,4 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "registry.fullname" . }}
@@ -27,7 +27,11 @@ spec:
           imagePullPolicy: {{ .Values.registry.image.pullPolicy }}
           {{- if .Values.portus.tls.enabled }}
           command: ["/bin/sh"]
-          args: ["-c", "cp /certificates/portus.crt /usr/local/share/ca-certificates;update-ca-certificates;registry serve /etc/docker/registry/config.yml"]
+            {{- if .Values.portus.tls.generate }}
+          args: ["-c", "cp /certificates/portus.ca /usr/local/share/ca-certificates; update-ca-certificates; registry serve /etc/docker/registry/config.yml"]
+            {{- else }}
+          args: ["-c", "cp /certificates/portus.crt /usr/local/share/ca-certificates; update-ca-certificates; registry serve /etc/docker/registry/config.yml"]
+            {{- end }}
           {{- end }}
           ports:
             - containerPort: {{ .Values.registry.service.port }}
@@ -103,6 +107,10 @@ spec:
               path: portus.key
             - key: cert
               path: portus.crt
+          {{- if .Values.portus.tls.generate }}
+            - key: ca
+              path: portus.ca
+          {{- end }}
         {{- end }}
         - name: config
           configMap:
